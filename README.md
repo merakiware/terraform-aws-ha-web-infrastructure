@@ -56,7 +56,13 @@ This project uses Terraform to deploy a production-grade, highly available web a
 Instead of hardcoding subnet CIDRs, subnets are calculated dynamically from the VPC CIDR block. This makes the configuration reusable across environments without manual IP planning.
 
 **EC2 instances have no public IPs**
-All web servers live in private subnets. Traffic only reaches them through the ALB, reducing the attack surface. The `associate_public_ip_address = false` setting in the launch template enforces this.
+All web servers live in private subnets with no public IP addresses. 
+This means there is no direct path from the internet to the EC2s — 
+the only way IN is through the ALB, and the only way OUT is through 
+the NAT Gateway. This eliminates entire attack vectors like direct 
+SSH brute force, port scanning, and unauthorized API access to the 
+instances. Even if an attacker knew the private IP, they have no 
+route to reach it.
 
 **Scale-in policy removes one instance at a time**
 `scaling_adjustment = -1` prevents aggressive scale-in that could terminate instances serving active connections. This was a deliberate choice caught during code review.
@@ -134,16 +140,18 @@ After `terraform apply` completes:
 
 ## Cost Estimate
 
-| Resource | Cost for 1 hour |
+| Resource | Actual cost (1 session ~45 min) |
 |---|---|
-| NAT Gateway | ~$0.05 |
-| ALB | Free tier eligible |
-| 2x EC2 t2.micro | Free tier eligible |
-| CloudWatch alarms | Free tier (10 alarms) |
-| **Total** | **~$0.05** |
+| NAT Gateway | ~$0.10 |
+| Elastic Load Balancer | ~$0.02 |
+| EC2 t2.micro x2 | ~$0.01 |
+| VPC | ~$0.01 |
+| **Total** | **~$0.14** |
 
-> ⚠️ Run `terraform destroy` immediately after testing. NAT Gateways cost ~$33/month if left running.
-
+> Run `terraform destroy` immediately after testing 
+> NAT Gateways bill by the hour even with zero traffic — 
+> ~$33/month if left running. All costs above reflect 
+> a single ~45 minute session on a paid AWS account.
 ---
 
 ## Future Improvements
