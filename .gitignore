@@ -1,0 +1,10 @@
+# State files - contain sensitive infrastructure info
+terraform.tfstate
+terraform.tfstate.backup
+
+# Terraform cache
+.terraform/
+.terraform.lock.hcl
+
+# Mac junk
+.DS_Store
